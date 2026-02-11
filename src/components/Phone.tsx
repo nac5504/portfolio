@@ -8,7 +8,7 @@ import * as THREE from "three";
 
 // Helper to handle basePath for GitHub Pages deployment
 const getAssetPath = (path: string) => {
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+  const basePath = '/portfolio';
   return `${basePath}${path}`;
 };
 
