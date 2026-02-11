@@ -6,10 +6,16 @@ import { apps } from "@/components/Phone";
 
 const Scene = dynamic(() => import("@/components/Scene"), { ssr: false });
 
+// Helper to handle basePath for GitHub Pages deployment
+const getAssetPath = (path: string) => {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+  return `${basePath}${path}`;
+};
+
 // Platform icon mapping
 const platformIcons: Record<string, string> = {
-  github: "/icons/github.png",
-  appstore: "/icons/appstore.png",
+  github: getAssetPath("/icons/github.png"),
+  appstore: getAssetPath("/icons/appstore.png"),
 };
 
 export default function Home() {
