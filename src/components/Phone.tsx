@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { useGLTF, Html } from "@react-three/drei";
-import { createPortal, useFrame } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import { useSpring, animated, to } from "@react-spring/three";
 import * as THREE from "three";
 
@@ -108,7 +108,9 @@ const HTML_WIDTH = 300;
 export default function Phone({ onSelectApp, selectedApp, isMobile }: PhoneProps) {
   const { scene } = useGLTF(MODEL_PATH);
 
-  // Find Display mesh, make it black, compute local-space bounds
+  // Find Display mesh, make it black, compute position in scene-local space
+  // by walking the parent chain's local .matrix transforms (set by GLB loader,
+  // no dependency on render loop or matrixWorld).
   const displayData = useMemo(() => {
     let displayMesh: THREE.Mesh | null = null;
 
@@ -132,26 +134,49 @@ export default function Phone({ onSelectApp, selectedApp, isMobile }: PhoneProps
     mesh.geometry.computeBoundingBox();
     const box = mesh.geometry.boundingBox!;
 
-    // Center and dimensions in mesh-local space
+    // Build the transform from mesh-local space to scene-local space
+    // by multiplying local .matrix of each ancestor up to (but not including) the scene root.
+    // .matrix is set by the GLB loader and doesn't depend on the render loop.
+    const matrices: THREE.Matrix4[] = [];
+    let current: THREE.Object3D | null = mesh;
+    while (current && current !== scene) {
+      current.updateMatrix(); // ensure .matrix is fresh from position/quaternion/scale
+      matrices.unshift(current.matrix.clone());
+      current = current.parent;
+    }
+    const toScene = new THREE.Matrix4();
+    for (const m of matrices) {
+      toScene.multiply(m);
+    }
+
+    // Transform bounding box center and corners to scene-local space
     const center = new THREE.Vector3();
     box.getCenter(center);
+    center.applyMatrix4(toScene);
     center.z += 0.0006; // sit slightly above display surface
 
-    const width = Math.abs(box.max.x - box.min.x);
-    const height = Math.abs(box.max.y - box.min.y);
+    const minCorner = box.min.clone().applyMatrix4(toScene);
+    const maxCorner = box.max.clone().applyMatrix4(toScene);
+    const width = Math.abs(maxCorner.x - minCorner.x);
+    const height = Math.abs(maxCorner.y - minCorner.y);
+
     const distanceFactor = (width * 400) / HTML_WIDTH;
     const htmlHeight = Math.round(height * 400 / distanceFactor);
 
-    return { mesh, center: center.toArray() as [number, number, number], distanceFactor, htmlHeight };
+    return {
+      center: center.toArray() as [number, number, number],
+      distanceFactor,
+      htmlHeight,
+    };
   }, [scene]);
 
-  // Entrance animation - phone shoots up from below with spin
+  // Entrance animation
   const [hasEntered, setHasEntered] = useState(false);
 
-  // Trigger entrance once model is loaded
-  useMemo(() => {
+  useEffect(() => {
     if (displayData) {
-      requestAnimationFrame(() => setHasEntered(true));
+      const id = requestAnimationFrame(() => setHasEntered(true));
+      return () => cancelAnimationFrame(id);
     }
   }, [displayData]);
 
@@ -187,7 +212,7 @@ export default function Phone({ onSelectApp, selectedApp, isMobile }: PhoneProps
     >
       <primitive object={scene} />
 
-      {displayData && createPortal(
+      {displayData && (
       <Html
         transform
         center
@@ -289,8 +314,7 @@ export default function Phone({ onSelectApp, selectedApp, isMobile }: PhoneProps
           {/* Home indicator */}
           <div style={{ height: 5, width: 134, background: "rgba(255, 255, 255, 0.45)", borderRadius: 3, alignSelf: "center", marginTop: 4, boxShadow: "0 0 8px rgba(255, 255, 255, 0.15)" }} />
         </div>
-      </Html>,
-      displayData.mesh
+      </Html>
       )}
     </animated.group>
   );
