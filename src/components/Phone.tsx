@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useGLTF, Html } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useSpring, animated, to } from "@react-spring/three";
@@ -14,7 +14,21 @@ const getAssetPath = (path: string) => {
 
 const MODEL_PATH = getAssetPath("/models/iphone-17-pro.glb");
 
-export const apps = [
+export interface App {
+  name: string;
+  slug: string;
+  color: string;
+  colorEnd: string;
+  emoji: string;
+  icon: string;
+  description: string;
+  dates: string;
+  location: string;
+  content: string[];
+  links: { label: string; url: string; platform: string }[];
+}
+
+export const apps: App[] = [
   {
     name: "Cravr", slug: "cravr", color: "#FF6B6B", colorEnd: "#E84545", emoji: "\u{1F9E0}", icon: getAssetPath("/icons/cravr.png"),
     description: "An AI-powered app that analyzes your cravings and suggests healthier alternatives based on what your body actually needs.",
@@ -88,27 +102,24 @@ interface PhoneProps {
   selectedApp: string | null;
 }
 
+const HTML_WIDTH = 300;
+
 export default function Phone({ onSelectApp, selectedApp }: PhoneProps) {
   const { scene } = useGLTF(MODEL_PATH);
+
+  // Refs for dynamic display bounds computation
+  const displayMeshRef = useRef<THREE.Mesh | null>(null);
+  const htmlGroupRef = useRef<THREE.Group>(null);
+  const [displayReady, setDisplayReady] = useState(false);
+  const displayDataRef = useRef<{ width: number; height: number; distanceFactor: number; htmlHeight: number } | null>(null);
 
   // Entrance animation - phone shoots up from below with spin
   const [hasEntered, setHasEntered] = useState(false);
 
-  useEffect(() => {
-    // Delay to allow model and screen to render properly before animating
-    const timer = setTimeout(() => setHasEntered(true), 800);
-    return () => clearTimeout(timer);
-  }, []);
-
   const entranceSpring = useSpring({
     position: hasEntered ? [0, 0, 0] : [0, -2.5, 0],
-    rotation: hasEntered ? [0, 0, 0] : [0, Math.PI * 5, 0], // 2.5 full rotations (900°)
-    config: {
-      mass: 1.8,
-      tension: 140,
-      friction: 32,
-      clamp: false // Allow overshoot
-    },
+    rotation: hasEntered ? [0, 0, 0] : [0, Math.PI * 5, 0],
+    config: { mass: 1.8, tension: 140, friction: 32, clamp: false },
   });
 
   const spring = useSpring({
@@ -116,12 +127,8 @@ export default function Phone({ onSelectApp, selectedApp }: PhoneProps) {
     config: { mass: 1, tension: 170, friction: 26 },
   });
 
-  // Find Display mesh: make it black, compute its local-space bounds
-  const display = useMemo(() => {
-    let center = new THREE.Vector3(0, 0, 0.004);
-    let width = 0.06754;
-    let height = 0.14566;
-
+  // Find Display mesh and make it black
+  useMemo(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
@@ -131,54 +138,63 @@ export default function Phone({ onSelectApp, selectedApp }: PhoneProps) {
           mat.emissive.set("#000000");
           mat.transparent = false;
           mat.opacity = 1;
-
-          // Compute bounding box in local space
-          mesh.geometry.computeBoundingBox();
-          const box = mesh.geometry.boundingBox!;
-
-          // Get center in local space and transform to world space
-          const localCenter = new THREE.Vector3();
-          box.getCenter(localCenter);
-          const worldCenter = localCenter.clone();
-          mesh.localToWorld(worldCenter);
-
-          center = worldCenter;
-          center.z += 0.0006; // Slight offset to sit on top of display
-
-          // Get dimensions (use local space, they're not affected by translation)
-          width = Math.abs(box.max.x - box.min.x);
-          height = Math.abs(box.max.y - box.min.y);
+          displayMeshRef.current = mesh;
         }
       }
     });
-
-    return { center, width, height };
   }, [scene]);
 
-  // Hide when camera is behind the phone
+  // Compute display bounds in useFrame (matrices are valid here) and position the Html group
   const screenRef = useRef<HTMLDivElement>(null);
   useFrame(({ camera }) => {
-    if (!screenRef.current) return;
-    const isFront = camera.position.z > 0;
-    screenRef.current.style.opacity = isFront ? "1" : "0";
-    screenRef.current.style.pointerEvents = isFront ? "auto" : "none";
+    // Hide overlay when camera is behind the phone
+    if (screenRef.current) {
+      const isFront = camera.position.z > 0;
+      screenRef.current.style.opacity = isFront ? "1" : "0";
+      screenRef.current.style.pointerEvents = isFront ? "auto" : "none";
+    }
+
+    // Compute display position once, when matrices are valid
+    if (!displayMeshRef.current || !htmlGroupRef.current) return;
+
+    const mesh = displayMeshRef.current;
+    mesh.geometry.computeBoundingBox();
+    const box = mesh.geometry.boundingBox!;
+
+    // Get center in mesh-local space, then transform to world space
+    const localCenter = new THREE.Vector3();
+    box.getCenter(localCenter);
+    const worldCenter = localCenter.clone().applyMatrix4(mesh.matrixWorld);
+
+    // Convert to the animated.group's local space (scene's local space)
+    const localPos = scene.worldToLocal(worldCenter);
+    localPos.z += 0.0006; // sit slightly above display surface
+
+    // Position the Html group
+    htmlGroupRef.current.position.copy(localPos);
+
+    // Compute dimensions if not done yet
+    if (!displayDataRef.current) {
+      const minWorld = box.min.clone().applyMatrix4(mesh.matrixWorld);
+      const maxWorld = box.max.clone().applyMatrix4(mesh.matrixWorld);
+      scene.worldToLocal(minWorld);
+      scene.worldToLocal(maxWorld);
+
+      const width = Math.abs(maxWorld.x - minWorld.x);
+      const height = Math.abs(maxWorld.y - minWorld.y);
+      const distanceFactor = (width * 400) / HTML_WIDTH;
+      const htmlHeight = Math.round(height * 400 / distanceFactor);
+
+      displayDataRef.current = { width, height, distanceFactor, htmlHeight };
+      setDisplayReady(true);
+      // Trigger entrance animation now that model is measured
+      requestAnimationFrame(() => setHasEntered(true));
+    }
   });
 
-  const HTML_WIDTH = 300;
-  const distanceFactor = (display.width * 400) / HTML_WIDTH;
-  const htmlHeight = Math.round(display.height * 400 / distanceFactor);
-
-  // Position at the center of the display
-  const htmlPos: [number, number, number] = [
-    display.center.x,
-    display.center.y,
-    display.center.z,
-  ];
-
-  // Properly combine both animated values with reactive binding
   const combinedPosition = to(
     [spring.positionX, entranceSpring.position],
-    (xPos, pos: any) => [xPos, pos[1], pos[2]]
+    (xPos, pos: any) => [xPos, pos[1], pos[2]],
   );
 
   return (
@@ -188,19 +204,19 @@ export default function Phone({ onSelectApp, selectedApp }: PhoneProps) {
     >
       <primitive object={scene} />
 
-      {/* Home screen overlay — centered on display */}
+      <group ref={htmlGroupRef}>
+      {displayReady && displayDataRef.current && (
       <Html
         transform
         center
-        position={htmlPos}
-        distanceFactor={distanceFactor}
+        distanceFactor={displayDataRef.current.distanceFactor}
         pointerEvents="auto"
       >
         <div
           ref={screenRef}
           style={{
             width: HTML_WIDTH,
-            height: htmlHeight,
+            height: displayDataRef.current.htmlHeight,
             backgroundImage: `url('${getAssetPath("/icons/phoneBackground.jpg")}')`,
             backgroundSize: "cover",
             backgroundPosition: "center",
@@ -208,40 +224,17 @@ export default function Phone({ onSelectApp, selectedApp }: PhoneProps) {
             display: "flex",
             flexDirection: "column",
             padding: "14px 14px 20px",
-            fontFamily:
-              "-apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif",
+            fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif",
             userSelect: "none",
             overflow: "hidden",
           }}
         >
-          {/* Status bar with Dynamic Island inline */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "0 6px",
-              marginBottom: 28,
-            }}
-          >
-            {/* Time */}
+          {/* Status bar */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 6px", marginBottom: 28 }}>
             <span style={{ color: "white", fontSize: 13, fontWeight: 600, letterSpacing: "-0.02em", textShadow: "0 1px 3px rgba(0,0,0,0.4)", flex: "1" }}>
               9:41
             </span>
-
-            {/* Dynamic Island */}
-            <div
-              style={{
-                width: 120,
-                height: 34,
-                background: "#000",
-                borderRadius: 20,
-                boxShadow: "0 0 0 1px rgba(255,255,255,0.05)",
-                flexShrink: 0,
-              }}
-            />
-
-            {/* Battery & signal */}
+            <div style={{ width: 120, height: 34, background: "#000", borderRadius: 20, boxShadow: "0 0 0 1px rgba(255,255,255,0.05)", flexShrink: 0 }} />
             <div style={{ display: "flex", alignItems: "center", gap: 5, flex: "1", justifyContent: "flex-end" }}>
               <svg width="16" height="11" viewBox="0 0 18 12" fill="white" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.3))" }}>
                 <rect x="0" y="9" width="3" height="3" rx="0.5" />
@@ -262,76 +255,27 @@ export default function Phone({ onSelectApp, selectedApp }: PhoneProps) {
           </div>
 
           {/* App grid */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 20,
-              justifyItems: "center",
-              padding: "0 4px",
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, justifyItems: "center", padding: "0 4px" }}>
             {apps.map((app) => (
               <button
                 key={app.slug}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectApp(app.slug);
-                }}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 6,
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                }}
+                onClick={(e) => { e.stopPropagation(); onSelectApp(app.slug); }}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: 0 }}
               >
                 <div
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 15,
-                    overflow: "hidden",
-                    transition: "transform 0.15s ease",
-                    boxShadow: "0 3px 10px rgba(0,0,0,0.3)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "scale(1.1)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "scale(1)";
-                  }}
+                  style={{ width: 64, height: 64, borderRadius: 15, overflow: "hidden", transition: "transform 0.15s ease", boxShadow: "0 3px 10px rgba(0,0,0,0.3)" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
                 >
                   {app.icon ? (
                     <img src={app.icon} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        background: `linear-gradient(160deg, ${app.color}, ${app.colorEnd})`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 30,
-                      }}
-                    >
+                    <div style={{ width: "100%", height: "100%", background: `linear-gradient(160deg, ${app.color}, ${app.colorEnd})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>
                       {app.emoji}
                     </div>
                   )}
                 </div>
-                <span
-                  style={{
-                    color: "white",
-                    fontSize: 11,
-                    fontWeight: 500,
-                    textShadow: "0 1px 4px rgba(0,0,0,0.6)",
-                    letterSpacing: "0.01em",
-                  }}
-                >
+                <span style={{ color: "white", fontSize: 11, fontWeight: 500, textShadow: "0 1px 4px rgba(0,0,0,0.6)", letterSpacing: "0.01em" }}>
                   {app.name}
                 </span>
               </button>
@@ -341,48 +285,17 @@ export default function Phone({ onSelectApp, selectedApp }: PhoneProps) {
           <div style={{ flex: 1 }} />
 
           {/* Social dock */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: 16,
-              marginBottom: 4,
-              padding: "10px 24px",
-              background: "rgba(101, 48, 118, 0.12)",
-              backdropFilter: "blur(30px) saturate(180%)",
-              WebkitBackdropFilter: "blur(30px) saturate(180%)",
-              borderRadius: 22,
-              border: "1px solid rgba(101, 48, 118, 0.2)",
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 4, padding: "10px 24px", background: "rgba(101, 48, 118, 0.12)", backdropFilter: "blur(30px) saturate(180%)", WebkitBackdropFilter: "blur(30px) saturate(180%)", borderRadius: 22, border: "1px solid rgba(101, 48, 118, 0.2)" }}>
             {[
               { name: "LinkedIn", href: "https://www.linkedin.com/in/nicholas-candello-426392157/", icon: getAssetPath("/icons/linkedin.png") },
               { name: "X", href: "https://x.com/nick_candello", icon: getAssetPath("/icons/x.png") },
               { name: "Instagram", href: "https://www.instagram.com/nick_candello", icon: getAssetPath("/icons/instagram.png") },
             ].map((social) => (
-              <a
-                key={social.name}
-                href={social.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                style={{ textDecoration: "none", cursor: "pointer" }}
-              >
+              <a key={social.name} href={social.href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ textDecoration: "none", cursor: "pointer" }}>
                 <div
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 15,
-                    overflow: "hidden",
-                    boxShadow: "0 3px 10px rgba(0,0,0,0.3)",
-                    transition: "transform 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "scale(1.1)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "scale(1)";
-                  }}
+                  style={{ width: 64, height: 64, borderRadius: 15, overflow: "hidden", boxShadow: "0 3px 10px rgba(0,0,0,0.3)", transition: "transform 0.15s ease" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
                 >
                   <img src={social.icon} alt={social.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </div>
@@ -390,20 +303,12 @@ export default function Phone({ onSelectApp, selectedApp }: PhoneProps) {
             ))}
           </div>
 
-          {/* Home indicator — glass bar */}
-          <div
-            style={{
-              height: 5,
-              width: 134,
-              background: "rgba(255, 255, 255, 0.45)",
-              borderRadius: 3,
-              alignSelf: "center",
-              marginTop: 4,
-              boxShadow: "0 0 8px rgba(255, 255, 255, 0.15)",
-            }}
-          />
+          {/* Home indicator */}
+          <div style={{ height: 5, width: 134, background: "rgba(255, 255, 255, 0.45)", borderRadius: 3, alignSelf: "center", marginTop: 4, boxShadow: "0 0 8px rgba(255, 255, 255, 0.15)" }} />
         </div>
       </Html>
+      )}
+      </group>
     </animated.group>
   );
 }

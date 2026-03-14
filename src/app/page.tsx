@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { apps } from "@/components/Phone";
+import { apps as defaultApps } from "@/components/Phone";
+import type { App } from "@/components/Phone";
 
 const Scene = dynamic(() => import("@/components/Scene"), { ssr: false });
 
@@ -21,6 +22,7 @@ const platformIcons: Record<string, string> = {
 export default function Home() {
   const [selectedApp, setSelectedApp] = useState<string | null>(null);
   const [introDone, setIntroDone] = useState(false);
+  const [appData, setAppData] = useState<App[]>(defaultApps);
 
   const handleSelectApp = (slug: string) => {
     setSelectedApp(slug);
@@ -30,7 +32,21 @@ export default function Home() {
     setSelectedApp(null);
   };
 
-  const activeApp = apps.find((a) => a.slug === selectedApp);
+  const updateApp = useCallback((slug: string, field: keyof App, value: any, index?: number) => {
+    setAppData((prev) =>
+      prev.map((app) => {
+        if (app.slug !== slug) return app;
+        if (field === "content" && typeof index === "number") {
+          const newContent = [...app.content];
+          newContent[index] = value;
+          return { ...app, content: newContent };
+        }
+        return { ...app, [field]: value };
+      })
+    );
+  }, []);
+
+  const activeApp = appData.find((a) => a.slug === selectedApp);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">
@@ -171,25 +187,43 @@ export default function Home() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <h2
+                      contentEditable
+                      suppressContentEditableWarning
+                      onBlur={(e) => updateApp(activeApp.slug, "name", e.currentTarget.textContent || "")}
                       style={{
                         fontSize: 40,
                         fontWeight: 800,
                         letterSpacing: "-0.035em",
-                        margin: 0,
                         color: "#EBEBD3",
                         lineHeight: 1.05,
+                        outline: "none",
+                        borderRadius: 6,
+                        padding: "2px 4px",
+                        margin: "-2px -4px",
+                        transition: "background 0.2s",
                       }}
+                      onFocus={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+                      onBlurCapture={(e) => { e.currentTarget.style.background = "transparent"; }}
                     >
                       {activeApp.name}
                     </h2>
                     <p
+                      contentEditable
+                      suppressContentEditableWarning
+                      onBlur={(e) => updateApp(activeApp.slug, "description", e.currentTarget.textContent || "")}
                       style={{
                         fontSize: 16,
                         lineHeight: 1.5,
                         margin: "8px 0 0",
                         color: "rgba(235,235,211,0.5)",
                         fontWeight: 500,
+                        outline: "none",
+                        borderRadius: 6,
+                        padding: "2px 4px",
+                        transition: "background 0.2s",
                       }}
+                      onFocus={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+                      onBlurCapture={(e) => { e.currentTarget.style.background = "transparent"; }}
                     >
                       {activeApp.description}
                     </p>
@@ -210,8 +244,30 @@ export default function Home() {
                       marginBottom: 4,
                     }}
                   >
-                    {activeApp.dates && <span>{activeApp.dates}</span>}
-                    {activeApp.location && <span>{activeApp.location}</span>}
+                    {activeApp.dates && (
+                      <span
+                        contentEditable
+                        suppressContentEditableWarning
+                        onBlur={(e) => updateApp(activeApp.slug, "dates", e.currentTarget.textContent || "")}
+                        style={{ outline: "none", borderRadius: 4, padding: "1px 4px", transition: "background 0.2s" }}
+                        onFocus={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+                        onBlurCapture={(e) => { e.currentTarget.style.background = "transparent"; }}
+                      >
+                        {activeApp.dates}
+                      </span>
+                    )}
+                    {activeApp.location && (
+                      <span
+                        contentEditable
+                        suppressContentEditableWarning
+                        onBlur={(e) => updateApp(activeApp.slug, "location", e.currentTarget.textContent || "")}
+                        style={{ outline: "none", borderRadius: 4, padding: "1px 4px", transition: "background 0.2s" }}
+                        onFocus={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+                        onBlurCapture={(e) => { e.currentTarget.style.background = "transparent"; }}
+                      >
+                        {activeApp.location}
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -224,12 +280,23 @@ export default function Home() {
                     {activeApp.content.map((paragraph, i) => (
                       <p
                         key={i}
+                        contentEditable
+                        suppressContentEditableWarning
+                        onBlur={(e) => updateApp(activeApp.slug, "content", e.currentTarget.textContent || "", i)}
                         style={{
                           fontSize: 15,
                           lineHeight: 1.8,
                           margin: "0 0 16px",
                           color: "rgba(235,235,211,0.6)",
+                          outline: "none",
+                          borderRadius: 6,
+                          padding: "4px 6px",
+                          marginLeft: -6,
+                          marginRight: -6,
+                          transition: "background 0.2s",
                         }}
+                        onFocus={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+                        onBlurCapture={(e) => { e.currentTarget.style.background = "transparent"; }}
                       >
                         {paragraph}
                       </p>
