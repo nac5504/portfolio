@@ -10,6 +10,7 @@ import Phone from "./Phone";
 interface SceneProps {
   onSelectApp: (slug: string) => void;
   selectedApp: string | null;
+  isMobile?: boolean;
 }
 
 const DEFAULT_POS = new THREE.Vector3(0, 0, 0.28);
@@ -30,7 +31,7 @@ function CameraReset({
   return null;
 }
 
-export default function Scene({ onSelectApp, selectedApp }: SceneProps) {
+export default function Scene({ onSelectApp, selectedApp, isMobile }: SceneProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
 
   return (
@@ -45,7 +46,7 @@ export default function Scene({ onSelectApp, selectedApp }: SceneProps) {
 
       <Environment preset="city" environmentIntensity={1.5} />
 
-      <Phone onSelectApp={onSelectApp} selectedApp={selectedApp} />
+      <Phone onSelectApp={onSelectApp} selectedApp={selectedApp} isMobile={isMobile} />
 
       <CameraReset active={!!selectedApp} controlsRef={controlsRef} />
 

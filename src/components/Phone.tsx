@@ -100,11 +100,12 @@ export const apps: App[] = [
 interface PhoneProps {
   onSelectApp: (slug: string) => void;
   selectedApp: string | null;
+  isMobile?: boolean;
 }
 
 const HTML_WIDTH = 300;
 
-export default function Phone({ onSelectApp, selectedApp }: PhoneProps) {
+export default function Phone({ onSelectApp, selectedApp, isMobile }: PhoneProps) {
   const { scene } = useGLTF(MODEL_PATH);
 
   // Refs for dynamic display bounds computation
@@ -123,7 +124,7 @@ export default function Phone({ onSelectApp, selectedApp }: PhoneProps) {
   });
 
   const spring = useSpring({
-    positionX: selectedApp ? -0.09 : 0,
+    positionX: selectedApp && !isMobile ? -0.09 : 0,
     config: { mass: 1, tension: 170, friction: 26 },
   });
 

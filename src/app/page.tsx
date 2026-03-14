@@ -1,8 +1,20 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { apps } from "@/components/Phone";
+
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    setIsMobile(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, [breakpoint]);
+  return isMobile;
+}
 
 const Scene = dynamic(() => import("@/components/Scene"), { ssr: false });
 
@@ -21,6 +33,7 @@ const platformIcons: Record<string, string> = {
 export default function Home() {
   const [selectedApp, setSelectedApp] = useState<string | null>(null);
   const [introDone, setIntroDone] = useState(false);
+  const isMobile = useIsMobile();
   const handleSelectApp = (slug: string) => {
     setSelectedApp(slug);
   };
@@ -58,15 +71,15 @@ export default function Home() {
           <div
             style={{
               position: "absolute",
-              top: 40,
-              left: 48,
+              top: isMobile ? 20 : 40,
+              left: isMobile ? 20 : 48,
               zIndex: 10,
               pointerEvents: "none",
             }}
           >
             <h1
               style={{
-                fontSize: 20,
+                fontSize: isMobile ? 16 : 20,
                 fontWeight: 600,
                 letterSpacing: "-0.02em",
                 color: "#EBEBD3",
@@ -85,23 +98,34 @@ export default function Home() {
               </div>
             }
           >
-            <Scene onSelectApp={handleSelectApp} selectedApp={selectedApp} />
+            <Scene onSelectApp={handleSelectApp} selectedApp={selectedApp} isMobile={isMobile} />
           </Suspense>
 
           {/* Floating project detail module — liquid glass */}
           <div
             style={{
               position: "absolute",
-              top: "50%",
-              right: "4%",
-              transform: `translateY(-50%) translateX(${activeApp ? "0" : "120%"}) scale(${activeApp ? 1 : 0.95})`,
+              ...(isMobile
+                ? {
+                    bottom: 0,
+                    left: "3vw",
+                    transform: `translateY(${activeApp ? "0" : "100%"})`,
+                    width: "94vw",
+                    height: "85vh",
+                    borderRadius: "32px 32px 0 0",
+                  }
+                : {
+                    top: "50%",
+                    right: "4%",
+                    transform: `translateY(-50%) translateX(${activeApp ? "0" : "120%"}) scale(${activeApp ? 1 : 0.95})`,
+                    width: "50vw",
+                    height: "88vh",
+                    borderRadius: 32,
+                  }),
               opacity: activeApp ? 1 : 0,
               transition: "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease",
-              width: "50vw",
-              height: "88vh",
               pointerEvents: activeApp ? "auto" : "none",
               zIndex: 20,
-              borderRadius: 32,
               overflow: "hidden",
             }}
           >
@@ -111,10 +135,10 @@ export default function Home() {
                 position: "absolute",
                 inset: 0,
                 background: "linear-gradient(165deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.05) 35%, rgba(101,48,118,0.08) 100%)",
-                backdropFilter: "blur(60px) saturate(200%)",
-                WebkitBackdropFilter: "blur(60px) saturate(200%)",
+                backdropFilter: isMobile ? "blur(30px) saturate(180%)" : "blur(60px) saturate(200%)",
+                WebkitBackdropFilter: isMobile ? "blur(30px) saturate(180%)" : "blur(60px) saturate(200%)",
                 border: "1px solid rgba(255,255,255,0.14)",
-                borderRadius: 32,
+                borderRadius: isMobile ? "32px 32px 0 0" : 32,
                 boxShadow: "0 24px 80px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)",
               }}
             />
@@ -141,16 +165,16 @@ export default function Home() {
                   position: "relative",
                   height: "100%",
                   overflowY: "auto",
-                  padding: "44px 48px 40px",
+                  padding: isMobile ? "28px 20px 32px" : "44px 48px 40px",
                   fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif",
                 }}
               >
                 {/* Title card — icon left, title + description right */}
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 24, marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: isMobile ? 16 : 24, marginBottom: 8 }}>
                   <div
                     style={{
-                      width: 84,
-                      height: 84,
+                      width: isMobile ? 60 : 84,
+                      height: isMobile ? 60 : 84,
                       borderRadius: 22,
                       overflow: "hidden",
                       flexShrink: 0,
@@ -171,7 +195,7 @@ export default function Home() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <h2
                       style={{
-                        fontSize: 40,
+                        fontSize: isMobile ? 28 : 40,
                         fontWeight: 800,
                         letterSpacing: "-0.035em",
                         color: "#EBEBD3",
@@ -353,9 +377,11 @@ export default function Home() {
             onClick={handleBack}
             style={{
               position: "absolute",
-              left: 32,
-              top: "50%",
-              transform: `translateY(-50%) scale(${activeApp ? 1 : 0.6})`,
+              left: isMobile ? 20 : 32,
+              top: isMobile ? 20 : "50%",
+              transform: isMobile
+                ? `scale(${activeApp ? 1 : 0.6})`
+                : `translateY(-50%) scale(${activeApp ? 1 : 0.6})`,
               opacity: activeApp ? 1 : 0,
               transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
               pointerEvents: activeApp ? "auto" : "none",
@@ -377,12 +403,12 @@ export default function Home() {
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.1) 100%)";
               e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)";
-              e.currentTarget.style.transform = "translateY(-50%) scale(1.08)";
+              e.currentTarget.style.transform = isMobile ? "scale(1.08)" : "translateY(-50%) scale(1.08)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = "linear-gradient(135deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 100%)";
               e.currentTarget.style.borderColor = "rgba(255,255,255,0.16)";
-              e.currentTarget.style.transform = "translateY(-50%) scale(1)";
+              e.currentTarget.style.transform = isMobile ? "scale(1)" : "translateY(-50%) scale(1)";
             }}
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">

@@ -190,6 +190,18 @@ body {
   background: rgba(235, 235, 211, 0.25);
 }
 
+/* Mobile responsive */
+@media (max-width: 767px) {
+  .intro-name {
+    font-size: 36px;
+  }
+  .intro-role-1,
+  .intro-role-2,
+  .intro-role-3 {
+    font-size: 16px;
+  }
+}
+
 /* Noise overlay to eliminate gradient banding */
 .dynamic-bg::after {
   content: "";
