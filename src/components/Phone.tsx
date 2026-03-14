@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useGLTF, Html } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { createPortal, useFrame } from "@react-three/fiber";
 import { useSpring, animated, to } from "@react-spring/three";
 import * as THREE from "three";
 
@@ -108,14 +108,52 @@ const HTML_WIDTH = 300;
 export default function Phone({ onSelectApp, selectedApp, isMobile }: PhoneProps) {
   const { scene } = useGLTF(MODEL_PATH);
 
-  // Refs for dynamic display bounds computation
-  const displayMeshRef = useRef<THREE.Mesh | null>(null);
-  const htmlGroupRef = useRef<THREE.Group>(null);
-  const [displayReady, setDisplayReady] = useState(false);
-  const displayDataRef = useRef<{ width: number; height: number; distanceFactor: number; htmlHeight: number } | null>(null);
+  // Find Display mesh, make it black, compute local-space bounds
+  const displayData = useMemo(() => {
+    let displayMesh: THREE.Mesh | null = null;
+
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        if (mesh.material && (mesh.material as THREE.Material).name === "Display") {
+          const mat = mesh.material as THREE.MeshStandardMaterial;
+          mat.color.set("#000000");
+          mat.emissive.set("#000000");
+          mat.transparent = false;
+          mat.opacity = 1;
+          displayMesh = mesh;
+        }
+      }
+    });
+
+    if (!displayMesh) return null;
+
+    const mesh = displayMesh as THREE.Mesh;
+    mesh.geometry.computeBoundingBox();
+    const box = mesh.geometry.boundingBox!;
+
+    // Center and dimensions in mesh-local space
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    center.z += 0.0006; // sit slightly above display surface
+
+    const width = Math.abs(box.max.x - box.min.x);
+    const height = Math.abs(box.max.y - box.min.y);
+    const distanceFactor = (width * 400) / HTML_WIDTH;
+    const htmlHeight = Math.round(height * 400 / distanceFactor);
+
+    return { mesh, center: center.toArray() as [number, number, number], distanceFactor, htmlHeight };
+  }, [scene]);
 
   // Entrance animation - phone shoots up from below with spin
   const [hasEntered, setHasEntered] = useState(false);
+
+  // Trigger entrance once model is loaded
+  useMemo(() => {
+    if (displayData) {
+      requestAnimationFrame(() => setHasEntered(true));
+    }
+  }, [displayData]);
 
   const entranceSpring = useSpring({
     position: hasEntered ? [0, 0, 0] : [0, -2.5, 0],
@@ -128,69 +166,13 @@ export default function Phone({ onSelectApp, selectedApp, isMobile }: PhoneProps
     config: { mass: 1, tension: 170, friction: 26 },
   });
 
-  // Find Display mesh and make it black
-  useMemo(() => {
-    scene.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-        if (mesh.material && (mesh.material as THREE.Material).name === "Display") {
-          const mat = mesh.material as THREE.MeshStandardMaterial;
-          mat.color.set("#000000");
-          mat.emissive.set("#000000");
-          mat.transparent = false;
-          mat.opacity = 1;
-          displayMeshRef.current = mesh;
-        }
-      }
-    });
-  }, [scene]);
-
-  // Compute display bounds in useFrame (matrices are valid here) and position the Html group
+  // Hide overlay when camera is behind the phone
   const screenRef = useRef<HTMLDivElement>(null);
   useFrame(({ camera }) => {
-    // Hide overlay when camera is behind the phone
-    if (screenRef.current) {
-      const isFront = camera.position.z > 0;
-      screenRef.current.style.opacity = isFront ? "1" : "0";
-      screenRef.current.style.pointerEvents = isFront ? "auto" : "none";
-    }
-
-    // Compute display position once, when matrices are valid
-    if (!displayMeshRef.current || !htmlGroupRef.current) return;
-
-    const mesh = displayMeshRef.current;
-    mesh.geometry.computeBoundingBox();
-    const box = mesh.geometry.boundingBox!;
-
-    // Get center in mesh-local space, then transform to world space
-    const localCenter = new THREE.Vector3();
-    box.getCenter(localCenter);
-    const worldCenter = localCenter.clone().applyMatrix4(mesh.matrixWorld);
-
-    // Convert to the animated.group's local space (scene's local space)
-    const localPos = scene.worldToLocal(worldCenter);
-    localPos.z += 0.0006; // sit slightly above display surface
-
-    // Position the Html group
-    htmlGroupRef.current.position.copy(localPos);
-
-    // Compute dimensions if not done yet
-    if (!displayDataRef.current) {
-      const minWorld = box.min.clone().applyMatrix4(mesh.matrixWorld);
-      const maxWorld = box.max.clone().applyMatrix4(mesh.matrixWorld);
-      scene.worldToLocal(minWorld);
-      scene.worldToLocal(maxWorld);
-
-      const width = Math.abs(maxWorld.x - minWorld.x);
-      const height = Math.abs(maxWorld.y - minWorld.y);
-      const distanceFactor = (width * 400) / HTML_WIDTH;
-      const htmlHeight = Math.round(height * 400 / distanceFactor);
-
-      displayDataRef.current = { width, height, distanceFactor, htmlHeight };
-      setDisplayReady(true);
-      // Trigger entrance animation now that model is measured
-      requestAnimationFrame(() => setHasEntered(true));
-    }
+    if (!screenRef.current) return;
+    const isFront = camera.position.z > 0;
+    screenRef.current.style.opacity = isFront ? "1" : "0";
+    screenRef.current.style.pointerEvents = isFront ? "auto" : "none";
   });
 
   const combinedPosition = to(
@@ -205,19 +187,19 @@ export default function Phone({ onSelectApp, selectedApp, isMobile }: PhoneProps
     >
       <primitive object={scene} />
 
-      <group ref={htmlGroupRef}>
-      {displayReady && displayDataRef.current && (
+      {displayData && createPortal(
       <Html
         transform
         center
-        distanceFactor={displayDataRef.current.distanceFactor}
+        position={displayData.center}
+        distanceFactor={displayData.distanceFactor}
         pointerEvents="auto"
       >
         <div
           ref={screenRef}
           style={{
             width: HTML_WIDTH,
-            height: displayDataRef.current.htmlHeight,
+            height: displayData.htmlHeight,
             backgroundImage: `url('${getAssetPath("/icons/phoneBackground.jpg")}')`,
             backgroundSize: "cover",
             backgroundPosition: "center",
@@ -307,9 +289,9 @@ export default function Phone({ onSelectApp, selectedApp, isMobile }: PhoneProps
           {/* Home indicator */}
           <div style={{ height: 5, width: 134, background: "rgba(255, 255, 255, 0.45)", borderRadius: 3, alignSelf: "center", marginTop: 4, boxShadow: "0 0 8px rgba(255, 255, 255, 0.15)" }} />
         </div>
-      </Html>
+      </Html>,
+      displayData.mesh
       )}
-      </group>
     </animated.group>
   );
 }
