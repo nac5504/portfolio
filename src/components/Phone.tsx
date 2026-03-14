@@ -31,12 +31,12 @@ export interface App {
 export const apps: App[] = [
   {
     name: "Cravr", slug: "cravr", color: "#FF6B6B", colorEnd: "#E84545", emoji: "\u{1F9E0}", icon: getAssetPath("/icons/cravr.png"),
-    description: "An AI-powered app that analyzes your cravings and suggests healthier alternatives based on what your body actually needs.",
-    dates: "Jan 2025 — Present", location: "San Francisco, CA",
+    description: "AI-powered craving behavior companion — 80K+ downloads, $15K MRR, built and shipped solo.",
+    dates: "Nov 2024 — Present", location: "Atlanta, GA",
     content: [
-      "Led full-stack development of a mobile application built with React Native and a Node.js backend. Integrated OpenAI's API to power a personalized recommendation engine that maps cravings to nutritional deficiencies.",
-      "Designed the end-to-end user experience from onboarding to daily craving logs, iterating on prototypes with a small beta group of 50 users. Achieved a 4.8-star average rating during TestFlight beta.",
-      "Built a custom data pipeline for nutritional analysis using USDA FoodData Central, enabling real-time lookup and scoring of over 300,000 food items.",
+      "Sole iOS developer of a live App Store product with 80K+ downloads and $15K monthly recurring revenue. Architected the full client in SwiftUI using MVVM, with Firebase handling multi-provider auth (Sign in with Apple, Google, phone/SMS), Firestore as the primary data layer, and Cloud Functions for server-side logic.",
+      "Shipped a production monetization stack: RevenueCat for subscription management and server-side receipt validation, Superwall for dynamic paywall A/B testing, and Stripe for web billing. Integrated Adjust with SKAdNetwork for privacy-compliant attribution, wired to Apple Search Ads for keyword-level install-to-subscriber tracking.",
+      "Implemented Twilio SMS re-engagement and cart abandonment sequences with TCPA-compliant opt-in and toll-free number verification. Integrated OpenAI's API to power the craving analysis engine — mapping user inputs to nutritional context in real time. Owns the full product lifecycle: architecture, App Store distribution, and growth infrastructure.",
     ],
     links: [{ label: "App Store", url: "#", platform: "appstore" }, { label: "GitHub", url: "#", platform: "github" }],
   },
