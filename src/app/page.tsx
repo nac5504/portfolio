@@ -1,19 +1,21 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
-import { apps } from "@/components/Phone";
+import { apps } from "@/components/app-data";
+import MobileExperience from "@/components/MobileExperience";
 
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
-    setIsMobile(mql.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, [breakpoint]);
-  return isMobile;
+// Keep touch phones in the mobile experience when rotated to landscape.
+const MOBILE_QUERY = "(max-width: 767px), (hover: none) and (pointer: coarse) and (max-width: 1024px)";
+function subscribeToMobile(onChange: () => void) {
+  const query = window.matchMedia(MOBILE_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+function getMobileSnapshot() { return window.matchMedia(MOBILE_QUERY).matches; }
+function getServerMobileSnapshot() { return false; }
+function useIsMobile() {
+  return useSyncExternalStore(subscribeToMobile, getMobileSnapshot, getServerMobileSnapshot);
 }
 
 const Scene = dynamic(() => import("@/components/Scene"), { ssr: false });
@@ -45,7 +47,7 @@ export default function Home() {
   const activeApp = apps.find((a) => a.slug === selectedApp);
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-black">
+    <div className="relative h-dvh w-screen overflow-hidden bg-black">
       {/* Intro sequence */}
       {!introDone && (
         <div
@@ -68,7 +70,7 @@ export default function Home() {
       {introDone && (
         <div className="main-content" style={{ position: "absolute", inset: 0 }}>
           {/* Name */}
-          <div
+          {!isMobile && <div
             style={{
               position: "absolute",
               top: isMobile ? 20 : 40,
@@ -89,7 +91,7 @@ export default function Home() {
             >
               Nick Candello
             </h1>
-          </div>
+          </div>}
 
           <Suspense
             fallback={
@@ -98,9 +100,13 @@ export default function Home() {
               </div>
             }
           >
-            <Scene onSelectApp={handleSelectApp} selectedApp={selectedApp} isMobile={isMobile} />
+            {isMobile
+              ? <MobileExperience selectedApp={activeApp ?? null} onSelectApp={handleSelectApp} onClose={handleBack} />
+              : <Scene onSelectApp={handleSelectApp} selectedApp={selectedApp} />}
+
           </Suspense>
 
+          {!isMobile && <>
           {/* Floating project detail module — liquid glass */}
           <div
             style={{
@@ -277,7 +283,7 @@ export default function Home() {
                       Links
                     </h3>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      {activeApp.links.map((link: any, i) => {
+                      {activeApp.links.map((link, i) => {
                         const iconSrc = link.platform && link.platform !== "website" ? platformIcons[link.platform] : null;
                         const isWebsite = link.platform === "website";
                         return (
@@ -374,6 +380,8 @@ export default function Home() {
 
           {/* Floating back chevron — liquid glass circle */}
           <button
+            aria-label="Close details"
+            tabIndex={activeApp ? 0 : -1}
             onClick={handleBack}
             style={{
               position: "absolute",
@@ -415,6 +423,7 @@ export default function Home() {
               <path d="M12.5 15L7.5 10L12.5 5" stroke="#EBEBD3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
+          </>}
         </div>
       )}
     </div>
