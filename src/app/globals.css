@@ -294,7 +294,7 @@ body {
 .mobile-app-toolbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: calc(env(safe-area-inset-top) + 6px) 12px 6px; border-bottom: .5px solid #54545880; background: #1c1c1ef5; flex-shrink: 0; }
 .mobile-app-toolbar > button { display: flex; align-items: center; gap: 6px; min-height: 44px; width: fit-content; padding: 0 4px; color: #409cff; background: none; border: none; font-size: 17px; cursor: pointer; }
 .mobile-app-toolbar > span { font-size: 17px; font-weight: 600; }
-.mobile-app .app-detail-scroll { padding-top: 24px; flex: 1; padding-bottom: 24px; }
+.mobile-app .app-detail-scroll { padding-top: 24px; flex: 1; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
 .mobile-app-home { display: grid; place-items: center; flex: 0 0 calc(44px + env(safe-area-inset-bottom)); width: 100%; background: #1c1c1e; border: none; cursor: pointer; }
 .mobile-app-home span { display: block; width: 134px; height: 5px; border-radius: 3px; background: #fffb; }
 .mobile-app button:focus-visible, .mobile-app a:focus-visible, .mobile-home button:focus-visible, .mobile-home a:focus-visible { outline: 3px solid #409cff; outline-offset: 2px; }
@@ -336,8 +336,5 @@ body {
   html, body { background: #252043 url('/portfolio/icons/phoneBackground.jpg') center / cover fixed; }
   .mobile-phone { background: #252043 url('/portfolio/icons/phoneBackground.jpg') center / cover; }
 }
-/* A standalone Home Screen launch already supplies the real iPhone status bar. */
-@media (display-mode: standalone) {
-  .mobile-status { visibility: hidden; flex-basis: 12px; }
-  .mobile-home-indicator { visibility: hidden; }
-}
+/* The immersive layout uses the device's native status bar and home indicator. */
+.mobile-status, .mobile-home-indicator, .mobile-app-home { display: none; }
