@@ -47,7 +47,7 @@ export default function Home() {
   const activeApp = apps.find((a) => a.slug === selectedApp);
 
   return (
-    <div className="relative h-dvh w-screen overflow-hidden bg-black">
+    <div className="portfolio-shell relative h-dvh w-screen overflow-hidden bg-black">
       {/* Intro sequence */}
       {!introDone && (
         <div

@@ -24,7 +24,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#252043",
+  // Let mobile browsers derive their chrome from the page background.
+  themeColor: [{ media: "(min-width: 1025px), (min-width: 768px) and (pointer: fine)", color: "#252043" }],
 };
 
 export default function RootLayout({

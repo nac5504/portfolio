@@ -331,10 +331,23 @@ body {
   .intro-overlay { animation-duration: 1ms; animation-delay: 0s; }
 }
 
-/* Paint behind the notch and home-indicator area; only controls get safe padding. */
-@media (max-width: 767px) {
-  html, body { background: #252043 url('/portfolio/icons/phoneBackground.jpg') center / cover fixed; }
-  .mobile-phone { background: #252043 url('/portfolio/icons/phoneBackground.jpg') center / cover; }
+/* Share one wallpaper across the page and safe areas, including rotated phones.
+   A large-viewport background keeps its crop stable as browser controls collapse. */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) and (max-width: 1024px) {
+  html {
+    background: #252043 url('/portfolio/icons/phoneBackground.jpg') center top / cover no-repeat;
+  }
+  body { background: transparent; }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    height: 100lvh;
+    pointer-events: none;
+    background: #252043 url('/portfolio/icons/phoneBackground.jpg') center / cover no-repeat;
+  }
+  .portfolio-shell, .mobile-phone, .mobile-home { background: transparent; }
+  .portfolio-shell > .dynamic-bg { display: none; }
 }
 /* The immersive layout uses the device's native status bar and home indicator. */
 .mobile-status, .mobile-home-indicator, .mobile-app-home { display: none; }
