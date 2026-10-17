@@ -1,4 +1,4 @@
-const getAssetPath = (path: string) => `/portfolio${path}`;
+const getAssetPath = (path: string) => path;
 
 export interface App {
   name: string;

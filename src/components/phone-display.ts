@@ -24,9 +24,9 @@ export function createDisplayGeometry(source: THREE.BufferGeometry) {
 
 export const SCREEN_WIDTH = 300;
 export const socials = [
-  { name: "LinkedIn", href: "https://www.linkedin.com/in/nicholas-candello-426392157/", icon: "/portfolio/icons/linkedin.png" },
-  { name: "X", href: "https://x.com/nick_candello", icon: "/portfolio/icons/x.png" },
-  { name: "Instagram", href: "https://www.instagram.com/nick_candello", icon: "/portfolio/icons/instagram.png" },
+  { name: "LinkedIn", href: "https://www.linkedin.com/in/nicholas-candello-426392157/", icon: "/icons/linkedin.png" },
+  { name: "X", href: "https://x.com/nick_candello", icon: "/icons/x.png" },
+  { name: "Instagram", href: "https://www.instagram.com/nick_candello", icon: "/icons/instagram.png" },
 ];
 
 type ScreenApp = { name: string; slug: string; icon: string; color: string };
@@ -94,7 +94,7 @@ export function createScreenTexture(apps: ScreenApp[], height: number, anisotrop
     if (disposed) return;
     ctx!.fillStyle = "#242044";
     ctx!.fillRect(0, 0, SCREEN_WIDTH, height);
-    const wallpaper = images.get("/portfolio/icons/phoneBackground.jpg");
+    const wallpaper = images.get("/icons/phoneBackground.jpg");
     if (wallpaper) {
       const scale = Math.max(SCREEN_WIDTH / wallpaper.width, height / wallpaper.height);
       const w = wallpaper.width * scale, h = wallpaper.height * scale;
@@ -131,7 +131,7 @@ export function createScreenTexture(apps: ScreenApp[], height: number, anisotrop
     texture.needsUpdate = true;
   }
   draw();
-  for (const src of ["/portfolio/icons/phoneBackground.jpg", ...apps.map(a => a.icon), ...socials.map(s => s.icon)]) {
+  for (const src of ["/icons/phoneBackground.jpg", ...apps.map(a => a.icon), ...socials.map(s => s.icon)]) {
     const image = new Image();
     image.onload = () => { if (!disposed) { images.set(src, image); draw(); } };
     image.src = src;

@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Nicholas Candello",
   description: "Portfolio",
-  manifest: "/portfolio/manifest.webmanifest",
+  manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Nick’s Apps" },
-  icons: { apple: "/portfolio/icons/portfolio-192.png" },
+  icons: { apple: "/icons/portfolio-192.png" },
 };
 
 export const viewport: Viewport = {

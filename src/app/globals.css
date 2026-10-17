@@ -260,7 +260,7 @@ body {
 .app-detail-links a + a { border-top: .5px solid #54545899; }
 
 .mobile-phone { position: absolute; inset: 0; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; color: white; background: #252043; }
-.mobile-home { height: 100%; display: flex; flex-direction: column; background: url('/portfolio/icons/phoneBackground.jpg') center / cover; padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); transition: transform 280ms cubic-bezier(.2,.8,.2,1), filter 280ms ease; }
+.mobile-home { height: 100%; display: flex; flex-direction: column; background: url('/icons/phoneBackground.jpg') center / cover; padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); transition: transform 280ms cubic-bezier(.2,.8,.2,1), filter 280ms ease; }
 .mobile-home.app-is-open { transform: scale(.94); filter: brightness(.65); }
 .mobile-status { flex: 0 0 60px; position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; font-size: 15px; font-weight: 600; }
 .mobile-island { position: absolute; width: 112px; height: 30px; left: calc(50% - 56px); top: 14px; background: #000; border-radius: 20px; }
@@ -335,7 +335,7 @@ body {
    A large-viewport background keeps its crop stable as browser controls collapse. */
 @media (max-width: 767px), (hover: none) and (pointer: coarse) and (max-width: 1024px) {
   html {
-    background: #252043 url('/portfolio/icons/phoneBackground.jpg') center top / cover no-repeat;
+    background: #252043 url('/icons/phoneBackground.jpg') center top / cover no-repeat;
   }
   body { background: transparent; }
   body::before {
@@ -344,7 +344,7 @@ body {
     inset: 0;
     height: 100lvh;
     pointer-events: none;
-    background: #252043 url('/portfolio/icons/phoneBackground.jpg') center / cover no-repeat;
+    background: #252043 url('/icons/phoneBackground.jpg') center / cover no-repeat;
   }
   .portfolio-shell, .mobile-phone, .mobile-home { background: transparent; }
   .portfolio-shell > .dynamic-bg { display: none; }

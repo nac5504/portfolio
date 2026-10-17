@@ -20,11 +20,8 @@ function useIsMobile() {
 
 const Scene = dynamic(() => import("@/components/Scene"), { ssr: false });
 
-// Helper to handle basePath for GitHub Pages deployment
-const getAssetPath = (path: string) => {
-  const basePath = '/portfolio';
-  return `${basePath}${path}`;
-};
+// The custom domain serves public assets from the site root.
+const getAssetPath = (path: string) => path;
 
 // Platform icon mapping
 const platformIcons: Record<string, string> = {

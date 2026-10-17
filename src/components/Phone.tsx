@@ -7,11 +7,8 @@ import { useSpring, animated } from "@react-spring/three";
 import * as THREE from "three";
 import { createDisplayGeometry, createScreenTexture, targetAtUV, SCREEN_WIDTH } from "./phone-display";
 
-// Helper to handle basePath for GitHub Pages deployment
-const getAssetPath = (path: string) => {
-  const basePath = '/portfolio';
-  return `${basePath}${path}`;
-};
+// The custom domain serves public assets from the site root.
+const getAssetPath = (path: string) => path;
 
 const MODEL_PATH = getAssetPath("/models/iphone-17-pro.glb");
 
