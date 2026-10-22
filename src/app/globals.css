@@ -343,7 +343,7 @@ body {
   }
   html:has(.main-content) {
     --edge-top-background: #252043;
-    --edge-bottom-background: #343268;
+    --edge-bottom-background: #252043;
   }
   html:has(.mobile-app[open]) {
     --edge-top-background: #1c1c1e;
@@ -419,5 +419,17 @@ body {
     /* An overflowing app grid can still scroll on short screens; at its edge,
        let the gesture continue to the document instead of trapping it. */
     .mobile-home-main { overscroll-behavior-y: auto; }
+  }
+}
+
+/* Some Safari versions sample the document color for both chrome edges.
+   Use the same home color at both ends to avoid a contrasting status-bar band. */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) and (max-width: 1024px) {
+  html, body, .mobile-home-main, .app-detail-scroll { scrollbar-width: none; }
+  html::-webkit-scrollbar, body::-webkit-scrollbar,
+  .mobile-home-main::-webkit-scrollbar, .app-detail-scroll::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
 }
