@@ -24,8 +24,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  // Let mobile browsers derive their chrome from the page background.
-  themeColor: [{ media: "(min-width: 1025px), (min-width: 768px) and (pointer: fine)", color: "#252043" }],
+  themeColor: "#1a1a1b",
 };
 
 export default function RootLayout({
@@ -39,6 +38,8 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <div className="safari-edge safari-edge-top" aria-hidden="true" />
+        <div className="safari-edge safari-edge-bottom" aria-hidden="true" />
       </body>
     </html>
   );

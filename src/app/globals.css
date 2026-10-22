@@ -288,7 +288,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
   transform-origin: top left; -webkit-font-smoothing: antialiased;
 }
-.mobile-app[open] { display: flex; flex-direction: column; animation: app-open 300ms cubic-bezier(.2,.8,.2,1) both; }
+.mobile-app[open] { display: flex; flex-direction: column; animation: app-open 300ms cubic-bezier(.2,.8,.2,1) backwards; }
 .mobile-app::backdrop { background: transparent; }
 .mobile-app.is-closing { animation: app-close 260ms cubic-bezier(.4,0,.7,.2) both; pointer-events: none; }
 .mobile-app-toolbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: calc(env(safe-area-inset-top) + 6px) 12px 6px; border-bottom: .5px solid #54545880; background: #1c1c1ef5; flex-shrink: 0; }
@@ -300,7 +300,7 @@ body {
 .mobile-app button:focus-visible, .mobile-app a:focus-visible, .mobile-home button:focus-visible, .mobile-home a:focus-visible { outline: 3px solid #409cff; outline-offset: 2px; }
 @keyframes app-open {
   from { transform: translate(var(--app-x),var(--app-y)) scale(var(--app-scale-x),var(--app-scale-y)); opacity: .35; border-radius: 28px; }
-  to { transform: translate(0,0) scale(1); opacity: 1; border-radius: 0; }
+  to { transform: none; opacity: 1; border-radius: 0; }
 }
 @keyframes app-close {
   from { transform: translate(0,0) scale(1); opacity: 1; border-radius: 0; }
@@ -331,13 +331,25 @@ body {
   .intro-overlay { animation-duration: 1ms; animation-delay: 0s; }
 }
 
-/* Share one wallpaper across the page and safe areas, including rotated phones.
-   A large-viewport background keeps its crop stable as browser controls collapse. */
+/* Safari samples solid fixed edges behind its controls. Adapted from:
+   https://joshpuckett.me/seamless-mobile-safari
+   Images cannot extend into browser chrome, so fade the wallpaper to these colors. */
+.safari-edge { display: none; }
 @media (max-width: 767px), (hover: none) and (pointer: coarse) and (max-width: 1024px) {
   html {
-    background: #252043 url('/icons/phoneBackground.jpg') center top / cover no-repeat;
+    --edge-top-background: #1a1a1b;
+    --edge-bottom-background: #1a1a1b;
+    background: var(--edge-top-background);
   }
-  body { background: transparent; }
+  html:has(.main-content) {
+    --edge-top-background: #252043;
+    --edge-bottom-background: #343268;
+  }
+  html:has(.mobile-app[open]) {
+    --edge-top-background: #1c1c1e;
+    --edge-bottom-background: #1c1c1e;
+  }
+  body { background: var(--edge-bottom-background); }
   body::before {
     content: '';
     position: fixed;
@@ -348,6 +360,64 @@ body {
   }
   .portfolio-shell, .mobile-phone, .mobile-home { background: transparent; }
   .portfolio-shell > .dynamic-bg { display: none; }
+  .safari-edge { display: block; pointer-events: none; }
+  .safari-edge::after, .safari-edge::before {
+    content: '';
+    position: fixed;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    pointer-events: none;
+  }
+  .safari-edge-top::after {
+    top: 0;
+    height: max(12px, env(safe-area-inset-top));
+    background: var(--edge-top-background);
+  }
+  .safari-edge-bottom::after {
+    bottom: 0;
+    height: max(12px, env(safe-area-inset-bottom));
+    background: var(--edge-bottom-background);
+  }
+  .safari-edge::before { height: 24px; }
+  .safari-edge-top::before {
+    top: max(12px, env(safe-area-inset-top));
+    background: linear-gradient(to bottom, var(--edge-top-background), transparent);
+  }
+  .safari-edge-bottom::before {
+    bottom: max(12px, env(safe-area-inset-bottom));
+    background: linear-gradient(to top, var(--edge-bottom-background), transparent);
+  }
+  /* Keep tappable content beyond the solid strips and their fades. */
+  .mobile-home { padding-top: max(12px, env(safe-area-inset-top)); }
+  .mobile-home-main { padding-top: 32px; }
+  .mobile-home-footer { padding-bottom: calc(28px + max(12px, env(safe-area-inset-bottom))); }
+  .mobile-app-toolbar { padding-top: calc(max(12px, env(safe-area-inset-top)) + 24px); }
+  .mobile-app .app-detail-scroll { padding-bottom: calc(32px + max(12px, env(safe-area-inset-bottom))); }
+  .mobile-skip { bottom: calc(28px + max(12px, env(safe-area-inset-bottom))); }
 }
 /* The immersive layout uses the device's native status bar and home indicator. */
 .mobile-status, .mobile-home-indicator, .mobile-app-home { display: none; }
+
+/* Give Safari a real document scroll gesture while the phone stays in place.
+   Only browser mode needs this runway; installed apps have no browser toolbar. */
+@media not all and (display-mode: standalone) {
+  @media (max-width: 767px), (hover: none) and (pointer: coarse) and (max-width: 1024px) {
+    html:has(.phase-home) {
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    body:has(.phase-home) {
+      height: auto;
+      min-height: calc(100lvh + 160px);
+      overflow: visible;
+    }
+    .portfolio-shell {
+      position: fixed;
+      inset: 0;
+    }
+    /* An overflowing app grid can still scroll on short screens; at its edge,
+       let the gesture continue to the document instead of trapping it. */
+    .mobile-home-main { overscroll-behavior-y: auto; }
+  }
+}

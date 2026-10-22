@@ -37,6 +37,9 @@ export default function MobileAppView({ app, origin, onClose }: {
     <dialog ref={dialog} className={`mobile-app${closing ? " is-closing" : ""}`}
       aria-labelledby="mobile-project-title" style={style}
       onCancel={event => { event.preventDefault(); dismiss(); }}>
+      {/* Modal dialogs paint above body-level edge strips. */}
+      <div className="safari-edge safari-edge-top" aria-hidden="true" />
+      <div className="safari-edge safari-edge-bottom" aria-hidden="true" />
       <header className="mobile-app-toolbar">
         <button autoFocus aria-label="Back to Home" onClick={dismiss}>
           <svg width="12" height="20" viewBox="0 0 12 20" fill="none" aria-hidden="true"><path d="m10 2-8 8 8 8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>

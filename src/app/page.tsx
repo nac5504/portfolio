@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import { apps } from "@/components/app-data";
 import MobileExperience from "@/components/MobileExperience";
@@ -42,6 +42,18 @@ export default function Home() {
   };
 
   const activeApp = apps.find((a) => a.slug === selectedApp);
+
+  // CSS owns the palette; keep supporting browsers' theme color in sync.
+  useEffect(() => {
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!meta) return;
+    const previous = meta.content;
+    const edge = getComputedStyle(document.documentElement)
+      .getPropertyValue("--edge-top-background").trim();
+    meta.content = isMobile && edge ? edge : "#1a1a1b";
+    return () => { meta.content = previous; };
+  }, [isMobile, introDone, selectedApp]);
+
 
   return (
     <div className="portfolio-shell relative h-dvh w-screen overflow-hidden bg-black">
